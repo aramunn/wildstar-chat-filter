@@ -1,0 +1,1 @@
+# wildstar-chat-filter
