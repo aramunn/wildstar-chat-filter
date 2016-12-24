@@ -1,0 +1,3 @@
+<Addon Author="Aramunn" APIVersion="14" Version="@project-version@" Name="ChatFilter" Description="Allows filtering of chat channels">
+  <Script Name="ChatFilter.lua"/>
+</Addon>
