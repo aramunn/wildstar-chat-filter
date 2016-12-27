@@ -1,6 +1,13 @@
 local ChatFilter = {}
 
-local knDefaultMaxMessageLength = 200
+local ktDataDefault = {
+  bEnabled = true,
+  nMaxMessageLength = 200,
+  arrWhitelist = {
+    "T3",
+  },
+  arrBlacklist = {},
+}
 
 local karrDefaultWhitelist = {
   "T3",
@@ -37,12 +44,58 @@ local karrDefaultWhitelist = {
   "Fungeon",
 }
 
-local karrDefaultBlacklist = {}
-
 local addonChatLog
--- local nRealmChannelId
+local nRealmChannelId
 local tWhitelist
 local tBlacklist
+
+function ChatFilter:Setup()
+  addonChatLog = Apollo.GetAddon("ChatLog")
+  self:FindRealmChannelId()
+  self:SettingsUpdated()
+  --self.xmlDoc = 
+  --register xml doc loaded callback?
+  Apollo.RegisterSlashCommand("chatfilter", "OnSlashCommand", self)
+end
+
+function ChatFilter:FindRealmChannelId()
+  for idx, channelCurrent in ipairs(ChatSystemLib.GetChannels()) do
+    local eChannelType = channelCurrent:GetType()
+    if eChannelType == ChatSystemLib.ChatChannel_Realm then
+      nRealmChannelId = channelCurrent:GetUniqueId()
+    end
+  end
+end
+
+function ChatFilter:SettingsUpdated()
+  if addonChatLog and self.tData.bEnabled then
+    Apollo.RegisterEventHandler("ChatMessage", "OnChatMessage", self)
+  else
+    Apollo.RemoveEventHandler("ChatMessage", self)
+  end
+  self:GenerateSearchLists()
+end
+
+function ChatFilter:GenerateSearchLists()
+  --for idx, strWord in ipairs(self.tData.arrWhitelist)
+  --TODO
+  --self.tData.arrWhite/Blacklist
+end
+
+-- function ChatFilter:MakeTable()
+  -- for idx, strGood in ipairs(ktWhiteList) do
+    -- local strToAdd = strGood:lower()
+    -- local tPath = tSearch
+    -- for c in strToAdd:gmatch(".") do
+      -- tPath[c] = tPath[c] or {}
+      -- tPath = tPath[c]
+    -- end
+    -- tPath.isMatch = true
+  -- end
+-- end
+
+function ChatFilter:OnSlashCommand(strCmd, strParam)
+end
 
 local function cloneTable(tData) --deep copy
   local tClone = {}
@@ -64,23 +117,11 @@ function ChatFilter:DisplayMessage(channelCurrent, tMessage)
     strChannelName = channelCurrent:GetName(),
     strChannelCommand = channelCurrent:GetCommand(),
     idChannel = channelCurrent:GetUniqueId(),
-    idChannel = knRealmChannelId,
+    idChannel = nRealmChannelId,
   }
   addonChatLog:HelperGenerateChatMessage(tQueuedMessage)
   addonChatLog:HelperQueueMessage(tQueuedMessage)
 end
-
--- function ChatFilter:MakeTable()
-  -- for idx, strGood in ipairs(ktWhiteList) do
-    -- local strToAdd = strGood:lower()
-    -- local tPath = tSearch
-    -- for c in strToAdd:gmatch(".") do
-      -- tPath[c] = tPath[c] or {}
-      -- tPath = tPath[c]
-    -- end
-    -- tPath.isMatch = true
-  -- end
--- end
 
 function ChatFilter:SplitString(strIn, inSplitPattern)
   local outResults = {}
@@ -109,11 +150,6 @@ end
 
 --ignore punctuation
 
-function ChatFilter:GenerateSearchLists()
-  --TODO
-  --self.tData.arrWhite/Blacklist
-end
-
 function ChatFilter:SearchMessage(strMessage)
   -- for idx,strWord in ipairs(self:SplitString(strMessage, "%s+")) do
     -- if self:IsInSearch(strWord) then 
@@ -130,47 +166,6 @@ function ChatFilter:OnChatMessage(channelCurrent, tMessage)
   local strMessage = string.lower(tostring(tMessage.arMessageSegments[1].strText))
   if strMessage:len() > self.tData.nMaxMessageLength then return end
   self:SearchMessage(strMessage)
-  -- for idx, strGood in ipairs(ktWhiteList) do
-    -- if string.find(strMessage, "%W"..string.lower(strGood).."%W") or
-       -- string.find(strMessage, "^"..string.lower(strGood).."%W") or
-       -- string.find(strMessage, "%W"..string.lower(strGood).."$") or
-       -- string.find(strMessage, "^"..string.lower(strGood).."$")
-    -- then
-      -- self:GoodMessage(channelCurrent, tMessage)
-      -- return
-    -- end
-  -- end
-end
-
--- function Tester:CreateCustomChannel(strChannelName)
-  -- for idx, channelCurrent in ipairs(ChatSystemLib.GetChannels()) do
-    -- if channelCurrent:GetType() == ChatSystemLib.ChatChannel_Custom then
-      -- if channelCurrent:GetName() == strChannelName then return end
-    -- end
-  -- end
-  -- ChatSystemLib.JoinChannel(strChannelName)
--- end
-
--- function ChatFilter:SetupChatFilter()
-  -- for idx, channelCurrent in ipairs(ChatSystemLib.GetChannels()) do
-    -- local eChannelType = channelCurrent:GetType()
-    -- if eChannelType == ChatSystemLib.ChatChannel_Realm then
-      -- Print("Found "..tostring(channelCurrent:GetName()))
-      -- nId = channelCurrent:GetUniqueId()
-    -- end
-  -- end
--- end
-
-function ChatFilter:OnSlashCommand(strCmd, strParam)
-end
-
-function ChatFilter:SettingsUpdated()
-  if addonChatLog and self.tData.bEnabled then
-    Apollo.RegisterEventHandler("ChatMessage", "OnChatMessage", self)
-  else
-    Apollo.RemoveEventHandler("ChatMessage", self)
-  end
-  self:GenerateSearchLists()
 end
 
 function ChatFilter:OnSave(eLevel)
@@ -182,18 +177,13 @@ end
 function ChatFilter:OnRestore(eLevel, tSave)
   if eLevel == GameLib.CodeEnumAddonSaveLevel.Account then
     self.tData = tSave
-    self:GenerateSearchLists()
+    self:SettingsUpdated()
   end
 end
 
 function ChatFilter:new(o)
   o = o or {
-    tData = {
-      bEnabled = true,
-      nMaxMessageLength = knDefaultMaxMessageLength,
-      arrWhitelist = karrDefaultWhitelist,
-      arrBlacklist = karrDefaultBlacklist,
-    }
+    tData = ktDataDefault,
   }
   setmetatable(o, self)
   self.__index = self
@@ -205,9 +195,7 @@ function ChatFilter:Init()
 end
 
 function ChatFilter:OnLoad()
-  Apollo.RegisterSlashCommand("chatfilter", "OnSlashCommand", self)
-  addonChatLog = Apollo.GetAddon("ChatLog")
-  self:SettingsUpdated()
+  self:Setup()
 end
 
 local ChatFilterInst = ChatFilter:new()
