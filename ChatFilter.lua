@@ -136,6 +136,16 @@ function ChatFilter:CreateWordList()
   wndList:ArrangeChildrenVert(Window.CodeEnumArrangeOrigin.LeftOrTop)
 end
 
+function ChatFilter:OnButtonCreate(wndHandler, wndControl)
+  
+end
+
+function ChatFilter:OnButtonDefaults(wndHandler, wndControl)
+  self.tData.arrWhitelist = ktDataDefault.arrWhitelist
+  self:GenerateSearchLists()
+  self:CreateWordList()
+end
+
 function ChatFilter:OnButtonRemove(wndHandler, wndControl)
   local nIndex = wndControl:GetData()
   self.tData.arrWhitelist[nIndex] = nil
