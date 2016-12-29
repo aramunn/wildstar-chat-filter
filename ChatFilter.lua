@@ -129,6 +129,7 @@ function ChatFilter:CreateWordList()
   local wndList = self.wndMain:FindChild("List")
   wndList:DestroyChildren()
   for idx, strWord in pairs(self.tData.arrWhitelist) do
+    if bDebug then strWord = "["..idx.."] "..strWord end
     local wndEntry = Apollo.LoadForm(self.xmlDoc, "ListEntry", wndList, self)
     wndEntry:FindChild("Word"):SetText(strWord)
     wndEntry:FindChild("ButtonRemove"):SetData(idx)
@@ -137,7 +138,10 @@ function ChatFilter:CreateWordList()
 end
 
 function ChatFilter:OnButtonCreate(wndHandler, wndControl)
-  
+  local strWord = self.wndMain:FindChild("CreateWord:EditBox"):GetText()
+  table.insert(self.tData.arrWhitelist, strWord)
+  self:GenerateSearchLists()
+  self:CreateWordList()
 end
 
 function ChatFilter:OnButtonDefaults(wndHandler, wndControl)
