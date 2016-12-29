@@ -61,6 +61,7 @@ local ktDataDefault = {
   -- arrBlacklist = {},
 }
 
+local bDebug
 local addonChatLog
 local nRealmChannelId
 local tWhitelist
@@ -70,8 +71,8 @@ function ChatFilter:Setup()
   addonChatLog = Apollo.GetAddon("ChatLog")
   self:FindRealmChannelId()
   self:SettingsUpdated()
-  --self.xmlDoc = 
-  --register xml doc loaded callback?
+  self.xmlDoc = XmlDoc.CreateFromFile("ChatFilter.xml")
+  -- self.xmlDoc:RegisterCallback("OnDocumentReady", self)
   Apollo.RegisterSlashCommand("cfilter", "OnSlashCommand", self)
   Apollo.RegisterSlashCommand("chatfilter", "OnSlashCommand", self)
 end
@@ -98,21 +99,54 @@ end
 
 function ChatFilter:GenerateSearchLists()
   tWhitelist = {}
-  for idx, strWord in ipairs(self.tData.arrWhitelist) do
+  for idx, strWord in pairs(self.tData.arrWhitelist) do
     tWhitelist[strWord:lower()] = true
   end
   -- tBlacklist = {}
-  -- for idx, strWord in ipairs(self.tData.arrBlacklist) do
+  -- for idx, strWord in pairs(self.tData.arrBlacklist) do
     -- tBlacklist[strWord:lower()] = true
   -- end
 end
 
 function ChatFilter:OnSlashCommand(strCmd, strParam)
-  Print("TODO")
+  if strParam == "debug" then
+    bDebug = not bDebug
+    Print("Debug: "..tostring(bDebug))
+    return
+  end
+  self:LoadMainWindow()
+end
+
+function ChatFilter:LoadMainWindow()
+  if self.wndMain and self.wndMain:IsValid() then
+    self.wndMain:Destroy()
+  end
+  self.wndMain = Apollo.LoadForm(self.xmlDoc, "Main", nil, self)
+  self:CreateWordList()
+end
+
+function ChatFilter:CreateWordList()
+  local wndList = self.wndMain:FindChild("List")
+  wndList:DestroyChildren()
+  for idx, strWord in pairs(self.tData.arrWhitelist) do
+    local wndEntry = Apollo.LoadForm(self.xmlDoc, "ListEntry", wndList, self)
+    wndEntry:FindChild("Word"):SetText(strWord)
+    wndEntry:FindChild("ButtonRemove"):SetData(idx)
+  end
+  wndList:ArrangeChildrenVert(Window.CodeEnumArrangeOrigin.LeftOrTop)
+end
+
+function ChatFilter:OnButtonRemove(wndHandler, wndControl)
+  local nIndex = wndControl:GetData()
+  self.tData.arrWhitelist[nIndex] = nil
+  self:GenerateSearchLists()
+  self:CreateWordList()
 end
 
 function ChatFilter:OnChatMessage(channelCurrent, tMessage)
-  if channelCurrent:GetType() ~= ChatSystemLib.ChatChannel_Nexus then return end
+  local nChatChannel = ChatSystemLib.ChatChannel_Nexus
+  if bDebug then nChatChannel = ChatSystemLib.ChatChannel_Say end
+  if channelCurrent:GetType() ~= nChatChannel then return end
   local strMessage = tostring(tMessage.arMessageSegments[1].strText)
   if strMessage:len() > self.tData.nMaxMessageLength then return end
   if self:SearchMessage(strMessage) then
