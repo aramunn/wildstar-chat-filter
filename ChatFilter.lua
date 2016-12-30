@@ -135,26 +135,39 @@ function ChatFilter:CreateWordList()
     wndEntry:FindChild("ButtonRemove"):SetData(idx)
   end
   wndList:ArrangeChildrenVert(Window.CodeEnumArrangeOrigin.LeftOrTop)
+  self.wndMain:FindChild("List"):SetVScrollPos(0)
 end
 
-function ChatFilter:OnButtonCreate(wndHandler, wndControl)
+function ChatFilter:OnCreateWord()
   local strWord = self.wndMain:FindChild("CreateWord:EditBox"):GetText()
   table.insert(self.tData.arrWhitelist, strWord)
   self:GenerateSearchLists()
   self:CreateWordList()
+  ChatSystemLib.PostOnChannel(
+    ChatSystemLib.ChatChannel_System,
+    "Added \""..strWord.."\"",
+    "ChatFilter"
+  )
 end
 
 function ChatFilter:OnButtonDefaults(wndHandler, wndControl)
-  self.tData.arrWhitelist = ktDataDefault.arrWhitelist
+  self.tData.arrWhitelist = self:CloneTable(ktDataDefault.arrWhitelist),
   self:GenerateSearchLists()
   self:CreateWordList()
+end
+
+function ChatFilter:OnButtonExit(wndHandler, wndControl)
+  self.wndMain:Destroy()
+  self.wndMain = nil
 end
 
 function ChatFilter:OnButtonRemove(wndHandler, wndControl)
   local nIndex = wndControl:GetData()
   self.tData.arrWhitelist[nIndex] = nil
+  local nScrollPos = self.wndMain:FindChild("List"):GetVScrollPos()
   self:GenerateSearchLists()
   self:CreateWordList()
+  self.wndMain:FindChild("List"):SetVScrollPos(nScrollPos)
 end
 
 function ChatFilter:OnChatMessage(channelCurrent, tMessage)
@@ -216,7 +229,7 @@ end
 
 function ChatFilter:new(o)
   o = o or {
-    tData = ktDataDefault,
+    tData = self:CloneTable(ktDataDefault),
   }
   setmetatable(o, self)
   self.__index = self
